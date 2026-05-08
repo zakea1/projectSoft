@@ -1,0 +1,1 @@
+memberSearchIndex = [{"p":"appointment_scheduling3","c":"AdminTimeConfig","l":"AdminTimeConfig()","u":"%3Cinit%3E()"},{"p":"appointment_scheduling3","c":"AdminTimeConfig","l":"loadCurrentRangeAndDuration()"},{"p":"appointment_scheduling3","c":"AdminTimeConfig","l":"saveRangeAndDuration(int, int, int)","u":"saveRangeAndDuration(int,int,int)"}];updateSearchResults();

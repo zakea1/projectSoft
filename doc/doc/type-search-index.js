@@ -1,0 +1,1 @@
+typeSearchIndex = [{"p":"appointment_scheduling3","l":"AdminTimeConfig"},{"l":"All Classes and Interfaces","u":"allclasses-index.html"}];updateSearchResults();
