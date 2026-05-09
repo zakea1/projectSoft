@@ -63,11 +63,7 @@
 
 
 
-    <dependency>
-    	<groupId>appointment</groupId>
-    	<artifactId>appointment_scheduling</artifactId>
-    	<version>0.0.1-SNAPSHOT</version>
-    </dependency>
+  
   </dependencies>
 
   <build>
