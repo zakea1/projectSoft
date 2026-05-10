@@ -13,7 +13,7 @@ public class AppointmentSlots {
     private static AppointmentSlots instance;
 
     private static final String INVALID_INDEX_MSG = "Invalid index.";
-    private static final String NO_BOOKING_MSG = "No booking found.";ٍ
+    private static final String NO_BOOKING_MSG = "No booking found.";
     private static final String ALREADY_BOOKED_MSG = "Already booked.";
     private static final String CANCELLED_MSG = "Cancelled.";
     private static final String CANCELLED_BY_ADMIN_MSG = "Cancelled by admin.";
