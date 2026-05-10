@@ -1,6 +1,7 @@
 package Service_Layer;
 
 import java.time.LocalDateTime;
+
 import Domain_Layer.AppointmentRules;
 import Domain_Layer.AppointmentType;
 import Domain_Layer.Schedule;
@@ -9,7 +10,9 @@ import Persistence_Layer.AppointmentSlotsManager;
 
 public class AppointmentSlots {
 
-    private final AppointmentSlotsManager slots = AppointmentSlotsManager.getInstance();
+    private final AppointmentSlotsManager slots =
+            AppointmentSlotsManager.getInstance();
+
     private static AppointmentSlots instance;
 
     private AppointmentSlots() {}
@@ -22,21 +25,66 @@ public class AppointmentSlots {
     }
 
     // =========================
-    // 🔥 BOOK APPOINTMENT
+    // Helper Methods
     // =========================
-    public String bookAppointment(int index, String email, AppointmentType type, int participantsCount) {
-        Schedule schedule = slots.loadSchedule();
 
-        if (index < 0 || index >= schedule.getSlots().size()) return "Invalid index.";
-        TimeSlot slot = schedule.getSlots().get(index);
+    private Schedule getSchedule() {
+        return slots.loadSchedule();
+    }
 
-        if (slot.getStart().isBefore(LocalDateTime.now())) return "Cannot book past appointments.";
-        if (slot.isBooked()) return "Already booked.";
+    private void saveSchedule(Schedule schedule) {
+        slots.saveSchedule(schedule);
+    }
 
-        for (TimeSlot s : schedule.getSlots()) {
-            if (s.isBooked() && s.getBookedBy().equals(email)) {
-                return "User already has a booking.";
+    private boolean isValidIndex(Schedule schedule, int index) {
+        return index >= 0 && index < schedule.getSlots().size();
+    }
+
+    private TimeSlot getSlot(Schedule schedule, int index) {
+        return schedule.getSlots().get(index);
+    }
+
+    private TimeSlot findUserBooking(Schedule schedule, String email) {
+
+        for (TimeSlot slot : schedule.getSlots()) {
+
+            if (slot.isBooked()
+                    && slot.getBookedBy().equals(email)) {
+
+                return slot;
             }
+        }
+
+        return null;
+    }
+
+    // =========================
+    // BOOK APPOINTMENT
+    // =========================
+
+    public String bookAppointment(int index,
+                                  String email,
+                                  AppointmentType type,
+                                  int participantsCount) {
+
+        Schedule schedule = getSchedule();
+
+        if (!isValidIndex(schedule, index)) {
+            return "Invalid index.";
+        }
+
+        TimeSlot slot = getSlot(schedule, index);
+
+        if (slot.getStart().isBefore(LocalDateTime.now())) {
+            return "Cannot book past appointments.";
+        }
+
+        if (slot.isBooked()) {
+            return "Already booked.";
+        }
+
+        if (findUserBooking(schedule, email) != null) {
+            return "User already has a booking.";
         }
 
         if (!AppointmentRules.validateParticipants(type, participantsCount)) {
@@ -44,88 +92,143 @@ public class AppointmentSlots {
         }
 
         slot.book(email, type, participantsCount);
-        slots.saveSchedule(schedule);
-        return "Booked successfully with " + participantsCount + " participants.";
+
+        saveSchedule(schedule);
+
+        return "Booked successfully with "
+                + participantsCount
+                + " participants.";
     }
 
     // =========================
-    // cancel user
+    // CANCEL USER APPOINTMENT
     // =========================
+
     public String cancelAppointment(String email) {
-        Schedule schedule = slots.loadSchedule();
-        for (TimeSlot slot : schedule.getSlots()) {
-            if (slot.isBooked() && slot.getBookedBy().equals(email)) {
-                slot.cancel();
-                slots.saveSchedule(schedule);
-                return "Cancelled.";
-            }
+
+        Schedule schedule = getSchedule();
+
+        TimeSlot slot = findUserBooking(schedule, email);
+
+        if (slot == null) {
+            return "No booking found.";
         }
-        return "No booking found.";
-    }
-
-    public String cancelAppointmentByAdmin(int index) {
-        Schedule schedule = slots.loadSchedule();
-        if (index < 0 || index >= schedule.getSlots().size()) return "Invalid index.";
-
-        TimeSlot slot = schedule.getSlots().get(index);
-        if (!slot.isBooked()) return "Already free.";
 
         slot.cancel();
-        slots.saveSchedule(schedule);
+
+        saveSchedule(schedule);
+
+        return "Cancelled.";
+    }
+
+    // =========================
+    // CANCEL BY ADMIN
+    // =========================
+
+    public String cancelAppointmentByAdmin(int index) {
+
+        Schedule schedule = getSchedule();
+
+        if (!isValidIndex(schedule, index)) {
+            return "Invalid index.";
+        }
+
+        TimeSlot slot = getSlot(schedule, index);
+
+        if (!slot.isBooked()) {
+            return "Already free.";
+        }
+
+        slot.cancel();
+
+        saveSchedule(schedule);
+
         return "Cancelled by admin.";
     }
 
     // =========================
-    // modify user
+    // MODIFY USER APPOINTMENT
     // =========================
-    public String modifyAppointment(String email, int newIndex, AppointmentType newType) {
-        Schedule schedule = slots.loadSchedule();
-        if (newIndex < 0 || newIndex >= schedule.getSlots().size()) return "Invalid index.";
 
-        for (TimeSlot slot : schedule.getSlots()) {
-            if (slot.isBooked() && slot.getBookedBy().equals(email)) {
-                TimeSlot newSlot = schedule.getSlots().get(newIndex);
+    public String modifyAppointment(String email,
+                                    int newIndex,
+                                    AppointmentType newType) {
 
-                if (newSlot.isBooked()) return "New slot already booked.";
-                if (!AppointmentRules.validateParticipants(newType, slot.getParticipants())) {
-                    return "Invalid participants for " + newType;
-                }
+        Schedule schedule = getSchedule();
 
-                int participants = slot.getParticipants();
-                slot.cancel();
-                newSlot.book(email, newType, participants);
-
-                slots.saveSchedule(schedule);
-                return "Modified successfully.";
-            }
+        if (!isValidIndex(schedule, newIndex)) {
+            return "Invalid index.";
         }
-        return "No booking found.";
+
+        TimeSlot oldSlot = findUserBooking(schedule, email);
+
+        if (oldSlot == null) {
+            return "No booking found.";
+        }
+
+        TimeSlot newSlot = getSlot(schedule, newIndex);
+
+        if (newSlot.isBooked()) {
+            return "New slot already booked.";
+        }
+
+        if (!AppointmentRules.validateParticipants(
+                newType,
+                oldSlot.getParticipants())) {
+
+            return "Invalid participants for " + newType;
+        }
+
+        int participants = oldSlot.getParticipants();
+
+        oldSlot.cancel();
+
+        newSlot.book(email, newType, participants);
+
+        saveSchedule(schedule);
+
+        return "Modified successfully.";
     }
 
     // =========================
-    // admin modify
+    // MODIFY BY ADMIN
     // =========================
-    public String modifyAppointmentByAdmin(int oldIndex, int newIndex) {
-        Schedule schedule = slots.loadSchedule();
 
-        if (oldIndex < 0 || newIndex < 0 ||
-            oldIndex >= schedule.getSlots().size() || newIndex >= schedule.getSlots().size())
+    public String modifyAppointmentByAdmin(int oldIndex,
+                                           int newIndex) {
+
+        Schedule schedule = getSchedule();
+
+        if (!isValidIndex(schedule, oldIndex)
+                || !isValidIndex(schedule, newIndex)) {
+
             return "Invalid index.";
+        }
 
-        TimeSlot oldSlot = schedule.getSlots().get(oldIndex);
-        TimeSlot newSlot = schedule.getSlots().get(newIndex);
+        TimeSlot oldSlot = getSlot(schedule, oldIndex);
 
-        if (!oldSlot.isBooked()) return "Old slot not booked.";
-        if (newSlot.isBooked()) return "New slot already booked.";
+        TimeSlot newSlot = getSlot(schedule, newIndex);
+
+        if (!oldSlot.isBooked()) {
+            return "Old slot not booked.";
+        }
+
+        if (newSlot.isBooked()) {
+            return "New slot already booked.";
+        }
 
         String email = oldSlot.getBookedBy();
+
         AppointmentType type = oldSlot.getType();
+
         int participantsCount = oldSlot.getParticipants();
 
         oldSlot.cancel();
+
         newSlot.book(email, type, participantsCount);
 
-        slots.saveSchedule(schedule);
+        saveSchedule(schedule);
+
         return "Modified by admin.";
     }
 }
