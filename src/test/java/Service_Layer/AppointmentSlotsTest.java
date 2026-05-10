@@ -23,19 +23,28 @@ class AppointmentSlotsTest {
 
         Schedule schedule = new Schedule();
 
-        // future free slot
+        // future slot 1
         schedule.getSlots().add(
-                new TimeSlot(LocalDateTime.now().plusDays(1))
+                new TimeSlot(
+                        LocalDateTime.now().plusDays(1),
+                        LocalDateTime.now().plusDays(1).plusHours(1)
+                )
         );
 
-        // another future free slot
+        // future slot 2
         schedule.getSlots().add(
-                new TimeSlot(LocalDateTime.now().plusDays(2))
+                new TimeSlot(
+                        LocalDateTime.now().plusDays(2),
+                        LocalDateTime.now().plusDays(2).plusHours(1)
+                )
         );
 
         // past slot
         schedule.getSlots().add(
-                new TimeSlot(LocalDateTime.now().minusDays(1))
+                new TimeSlot(
+                        LocalDateTime.now().minusDays(1),
+                        LocalDateTime.now().minusDays(1).plusHours(1)
+                )
         );
 
         AppointmentSlotsManager
@@ -142,9 +151,7 @@ class AppointmentSlotsTest {
                 5
         );
 
-        assertTrue(
-                result.contains("Invalid participants")
-        );
+        assertTrue(result.contains("Invalid participants"));
     }
 
     // =========================
@@ -298,20 +305,18 @@ class AppointmentSlotsTest {
 
         service.bookAppointment(
                 0,
-                "test@mail.com",
+                "group@mail.com",
                 AppointmentType.GROUP,
                 5
         );
 
         String result = service.modifyAppointment(
-                "test@mail.com",
+                "group@mail.com",
                 1,
                 AppointmentType.INDIVIDUAL
         );
 
-        assertTrue(
-                result.contains("Invalid participants")
-        );
+        assertTrue(result.contains("Invalid participants"));
     }
 
     // =========================
