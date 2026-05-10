@@ -6,3 +6,4 @@ target/
 bookings.txt
 users.txt
 admin_time_range.txt
+/bin/
