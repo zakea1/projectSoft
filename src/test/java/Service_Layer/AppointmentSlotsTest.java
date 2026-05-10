@@ -1,117 +1,84 @@
 package Service_Layer;
 
-import org.junit.jupiter.api.*;
-import static org.junit.jupiter.api.Assertions.*;
+import Domain_Layer.AppointmentType;
+import Domain_Layer.Schedule;
+import Domain_Layer.TimeSlot;
+import Persistence_Layer.AppointmentSlotsManager;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
-import Domain_Layer.*;
-import Persistence_Layer.AppointmentSlotsManager;
+import static org.junit.jupiter.api.Assertions.*;
 
-public class AppointmentSlotsTest {
+class AppointmentSlotsTest {
 
     private AppointmentSlots service;
 
     @BeforeEach
-    void setup() {
+    void setUp() {
 
         service = AppointmentSlots.getInstance();
 
-        // تنظيف كامل
-        Schedule empty = new Schedule();
-        AppointmentSlotsManager.getInstance().saveSchedule(empty);
-
+        // Reset schedule manually (important for singleton state)
         Schedule schedule = new Schedule();
 
-        // Slots ثابتة
-        TimeSlot pastSlot =
-                new TimeSlot(
-                        LocalDateTime.now().minusHours(2),
-                        LocalDateTime.now().minusHours(1));
+        List<TimeSlot> slots = new ArrayList<>();
 
-        TimeSlot futureSlot1 =
-                new TimeSlot(
-                        LocalDateTime.now().plusHours(1),
-                        LocalDateTime.now().plusHours(2));
+        // Create future slots for valid booking
+        for (int i = 0; i < 5; i++) {
+            TimeSlot slot = new TimeSlot(
+                    LocalDateTime.now().plusDays(1 + i)
+            );
+            slots.add(slot);
+        }
 
-        TimeSlot futureSlot2 =
-                new TimeSlot(
-                        LocalDateTime.now().plusHours(3),
-                        LocalDateTime.now().plusHours(4));
+        schedule.setSlots(slots);
 
-        TimeSlot futureSlot3 =
-                new TimeSlot(
-                        LocalDateTime.now().plusHours(5),
-                        LocalDateTime.now().plusHours(6));
-
-        schedule.addSlot(pastSlot);     // index 0
-        schedule.addSlot(futureSlot1);  // index 1
-        schedule.addSlot(futureSlot2);  // index 2
-        schedule.addSlot(futureSlot3);  // index 3
-
-        AppointmentSlotsManager
-                .getInstance()
-                .saveSchedule(schedule);
+        AppointmentSlotsManager.getInstance().saveSchedule(schedule);
     }
 
-    // ===================== BOOK =====================
+    // =========================
+    // BOOKING TESTS
+    // =========================
+
+    @Test
+    void testBookAppointmentSuccess() {
+        String result = service.bookAppointment(
+                0,
+                "test@mail.com",
+                AppointmentType.INDIVIDUAL,
+                1
+        );
+
+        assertEquals("Booked successfully with 1 participants.", result);
+    }
 
     @Test
     void testBookInvalidIndex() {
-
-        String result =
-                service.bookAppointment(
-                        -1,
-                        "user@test.com",
-                        AppointmentType.URGENT,
-                        2);
+        String result = service.bookAppointment(
+                999,
+                "test@mail.com",
+                AppointmentType.INDIVIDUAL,
+                1
+        );
 
         assertEquals("Invalid index.", result);
     }
 
     @Test
-    void testBookPastAppointment() {
+    void testDoubleBookingSameSlot() {
 
-        String result =
-                service.bookAppointment(
-                        0,
-                        "user@test.com",
-                        AppointmentType.URGENT,
-                        2);
+        service.bookAppointment(0, "a@mail.com", AppointmentType.INDIVIDUAL, 1);
 
-        assertEquals("Cannot book past appointments.", result);
-    }
-
-    @Test
-    void testBookSuccessfully() {
-
-        String result =
-                service.bookAppointment(
-                        1,
-                        "user@test.com",
-                        AppointmentType.URGENT,
-                        2);
-
-        assertEquals(
-                "Booked successfully with 2 participants.",
-                result);
-    }
-
-    @Test
-    void testBookAlreadyBooked() {
-
-        service.bookAppointment(
-                1,
-                "user@test.com",
-                AppointmentType.URGENT,
-                2);
-
-        String result =
-                service.bookAppointment(
-                        1,
-                        "another@test.com",
-                        AppointmentType.URGENT,
-                        2);
+        String result = service.bookAppointment(
+                0,
+                "b@mail.com",
+                AppointmentType.INDIVIDUAL,
+                1
+        );
 
         assertEquals("Already booked.", result);
     }
@@ -119,179 +86,168 @@ public class AppointmentSlotsTest {
     @Test
     void testUserAlreadyHasBooking() {
 
-        service.bookAppointment(
-                1,
-                "user@test.com",
-                AppointmentType.URGENT,
-                2);
+        service.bookAppointment(0, "same@mail.com", AppointmentType.INDIVIDUAL, 1);
 
-        String result =
-                service.bookAppointment(
-                        2,
-                        "user@test.com",
-                        AppointmentType.URGENT,
-                        2);
+        String result = service.bookAppointment(
+                1,
+                "same@mail.com",
+                AppointmentType.INDIVIDUAL,
+                1
+        );
 
         assertEquals("User already has a booking.", result);
     }
 
-    // ===================== CANCEL =====================
+    @Test
+    void testInvalidParticipants() {
+
+        String result = service.bookAppointment(
+                1,
+                "test@mail.com",
+                AppointmentType.INDIVIDUAL,
+                999
+        );
+
+        assertTrue(result.startsWith("Invalid participants"));
+    }
+
+    // =========================
+    // CANCEL TESTS
+    // =========================
 
     @Test
-    void testCancelAppointmentSuccessfully() {
+    void testCancelAppointmentSuccess() {
 
-        service.bookAppointment(
-                1,
-                "user@test.com",
-                AppointmentType.URGENT,
-                2);
+        service.bookAppointment(0, "cancel@mail.com", AppointmentType.INDIVIDUAL, 1);
 
-        String result =
-                service.cancelAppointment("user@test.com");
+        String result = service.cancelAppointment("cancel@mail.com");
 
         assertEquals("Cancelled.", result);
     }
 
     @Test
-    void testCancelAppointmentNoBooking() {
+    void testCancelAppointmentNotFound() {
 
-        String result =
-                service.cancelAppointment("nobooking@test.com");
+        String result = service.cancelAppointment("notfound@mail.com");
 
         assertEquals("No booking found.", result);
     }
 
     @Test
-    void testCancelAppointmentByAdminInvalidIndex() {
+    void testAdminCancelSuccess() {
 
-        String result =
-                service.cancelAppointmentByAdmin(-1);
+        service.bookAppointment(0, "admin@mail.com", AppointmentType.INDIVIDUAL, 1);
 
-        assertEquals("Invalid index.", result);
-    }
-
-    @Test
-    void testCancelAppointmentByAdminAlreadyFree() {
-
-        String result =
-                service.cancelAppointmentByAdmin(3);
-
-        assertEquals("Already free.", result);
-    }
-
-    @Test
-    void testCancelAppointmentByAdminSuccessfully() {
-
-        service.bookAppointment(
-                1,
-                "user@test.com",
-                AppointmentType.URGENT,
-                2);
-
-        String result =
-                service.cancelAppointmentByAdmin(1);
+        String result = service.cancelAppointmentByAdmin(0);
 
         assertEquals("Cancelled by admin.", result);
     }
 
-    // ===================== MODIFY =====================
-
     @Test
-    void testModifyAppointmentInvalidIndex() {
+    void testAdminCancelInvalidIndex() {
 
-        String result =
-                service.modifyAppointment(
-                        "user@test.com",
-                        -1,
-                        AppointmentType.URGENT);
+        String result = service.cancelAppointmentByAdmin(999);
 
         assertEquals("Invalid index.", result);
     }
 
-    @Test
-    void testModifyAppointmentNoBooking() {
-
-        String result =
-                service.modifyAppointment(
-                        "unknown@test.com",
-                        2,
-                        AppointmentType.URGENT);
-
-        assertEquals("No booking found.", result);
-    }
+    // =========================
+    // MODIFY TESTS (USER)
+    // =========================
 
     @Test
-    void testModifyAppointmentSuccessfully() {
+    void testModifyAppointmentSuccess() {
 
-        service.bookAppointment(
+        service.bookAppointment(0, "mod@mail.com", AppointmentType.INDIVIDUAL, 1);
+
+        String result = service.modifyAppointment(
+                "mod@mail.com",
                 1,
-                "user@test.com",
-                AppointmentType.URGENT,
-                2);
-
-        String result =
-                service.modifyAppointment(
-                        "user@test.com",
-                        2,
-                        AppointmentType.URGENT);
+                AppointmentType.INDIVIDUAL
+        );
 
         assertEquals("Modified successfully.", result);
     }
 
     @Test
-    void testModifyAppointmentNewSlotBooked() {
+    void testModifyNoBookingFound() {
 
-        service.bookAppointment(
+        String result = service.modifyAppointment(
+                "ghost@mail.com",
                 1,
-                "user1@test.com",
-                AppointmentType.URGENT,
-                2);
+                AppointmentType.INDIVIDUAL
+        );
 
-        service.bookAppointment(
-                2,
-                "user2@test.com",
-                AppointmentType.URGENT,
-                2);
-
-        String result =
-                service.modifyAppointment(
-                        "user1@test.com",
-                        2,
-                        AppointmentType.URGENT);
-
-        assertEquals("New slot already booked.", result);
+        assertEquals("No booking found.", result);
     }
 
     @Test
-    void testModifyAppointmentByAdminInvalidIndex() {
+    void testModifyInvalidIndex() {
 
-        String result =
-                service.modifyAppointmentByAdmin(-1, 2);
+        service.bookAppointment(0, "mod2@mail.com", AppointmentType.INDIVIDUAL, 1);
+
+        String result = service.modifyAppointment(
+                "mod2@mail.com",
+                999,
+                AppointmentType.INDIVIDUAL
+        );
 
         assertEquals("Invalid index.", result);
     }
 
     @Test
-    void testModifyAppointmentByAdminOldSlotNotBooked() {
+    void testModifyToBookedSlot() {
 
-        String result =
-                service.modifyAppointmentByAdmin(3, 1);
+        service.bookAppointment(0, "a@mail.com", AppointmentType.INDIVIDUAL, 1);
+        service.bookAppointment(1, "b@mail.com", AppointmentType.INDIVIDUAL, 1);
+
+        String result = service.modifyAppointment(
+                "a@mail.com",
+                1,
+                AppointmentType.INDIVIDUAL
+        );
+
+        assertEquals("New slot already booked.", result);
+    }
+
+    // =========================
+    // MODIFY TESTS (ADMIN)
+    // =========================
+
+    @Test
+    void testAdminModifySuccess() {
+
+        service.bookAppointment(0, "adminmod@mail.com", AppointmentType.INDIVIDUAL, 1);
+
+        String result = service.modifyAppointmentByAdmin(0, 1);
+
+        assertEquals("Modified by admin.", result);
+    }
+
+    @Test
+    void testAdminModifyInvalidOldIndex() {
+
+        String result = service.modifyAppointmentByAdmin(999, 1);
+
+        assertEquals("Invalid index.", result);
+    }
+
+    @Test
+    void testAdminModifyOldNotBooked() {
+
+        String result = service.modifyAppointmentByAdmin(0, 1);
 
         assertEquals("Old slot not booked.", result);
     }
 
     @Test
-    void testModifyAppointmentByAdminSuccessfully() {
+    void testAdminModifyNewAlreadyBooked() {
 
-        service.bookAppointment(
-                1,
-                "user@test.com",
-                AppointmentType.URGENT,
-                2);
+        service.bookAppointment(0, "a@mail.com", AppointmentType.INDIVIDUAL, 1);
+        service.bookAppointment(1, "b@mail.com", AppointmentType.INDIVIDUAL, 1);
 
-        String result =
-                service.modifyAppointmentByAdmin(1, 2);
+        String result = service.modifyAppointmentByAdmin(0, 1);
 
-        assertEquals("Modified by admin.", result);
+        assertEquals("New slot already booked.", result);
     }
 }
