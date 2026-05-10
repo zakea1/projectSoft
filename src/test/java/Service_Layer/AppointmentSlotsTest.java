@@ -233,7 +233,7 @@ public class AppointmentSlotsTest {
                 service.modifyAppointment(
                         "user@test.com",
                         2,
-                        AppointmentType.REGULAR);
+                        AppointmentType.URGENT);
 
         assertEquals("Modified successfully.", result);
     }
