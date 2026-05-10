@@ -18,6 +18,14 @@
              <sonar.projectKey>zakea1_projectSoft</sonar.projectKey> 
 <sonar.host.url>https://sonarcloud.io</sonar.host.url>
              <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+              <sonar.coverage.exclusions>
+           
+            **/Domain_Layer/**,
+            **/Persistence_Layer/**,
+            **/presentation_Layer/**
+        </sonar.coverage.exclusions>
+  
     </properties>
 
     <dependencies>
@@ -115,7 +123,7 @@
                             <goal>report</goal>
                         </goals>
                     </execution>
-
+                 
                 </executions>
             </plugin>
 
