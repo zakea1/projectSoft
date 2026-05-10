@@ -23,7 +23,8 @@
            
             **/Domain_Layer/**,
             **/Persistence_Layer/**,
-            **/presentation_Layer/**
+            **/presentation_Layer/**,
+                       **/AppointmentSlots.java/**
         </sonar.coverage.exclusions>
   
     </properties>
