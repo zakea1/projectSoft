@@ -24,7 +24,6 @@ public class AppointmentSlotsManager {
         return instance;
     }
 
-  
     public Schedule buildSchedule(int lowHour, int highHour) {
         Schedule schedule = new Schedule();
         LocalDate today = LocalDate.now();
@@ -44,7 +43,6 @@ public class AppointmentSlotsManager {
         return schedule;
     }
 
-  
     public void saveSchedule(Schedule schedule) {
         try (PrintWriter writer = new PrintWriter(new FileWriter(SLOT_FILE))) {
             for (TimeSlot slot : schedule.getSlots()) {
@@ -59,40 +57,51 @@ public class AppointmentSlotsManager {
         }
     }
 
-    
+    // ↓↓↓ إعادة تنظيم ↓↓↓
     public Schedule loadSchedule() {
-        Schedule schedule = new Schedule();
         File f = new File(SLOT_FILE);
+        if (!f.exists()) {
+            return buildScheduleIfConfigured();
+        }
+        return readScheduleFromFile(f);
+    }
 
-        if (f.exists()) {
-            try (Scanner sc = new Scanner(f)) {
-                while (sc.hasNextLine()) {
-                    String[] parts = sc.nextLine().split(",");
-                    if (parts.length < 6) continue;
+    private Schedule buildScheduleIfConfigured() {
+        if (Appointment.selectedLow > 0) {
+            return buildSchedule(Appointment.selectedLow, Appointment.selectedHigh);
+        }
+        return new Schedule();
+    }
 
-                    LocalDateTime start = LocalDateTime.parse(parts[0]);
-                    LocalDateTime end = LocalDateTime.parse(parts[1]);
-                    boolean booked = Boolean.parseBoolean(parts[2]);
-                    String bookedBy = parts[3];
-                    AppointmentType type = parts[4].isEmpty() ? null : AppointmentType.valueOf(parts[4]);
-                    int participants = Integer.parseInt(parts[5]);
-
-                    TimeSlot slot = new TimeSlot(start, end);
-                    if (booked) slot.book(bookedBy, type, participants);
-                    schedule.addSlot(slot);
-                }
-            } catch (Exception e) {
-                System.out.println("Load error: " + e.getMessage());
+    private Schedule readScheduleFromFile(File file) {
+        Schedule schedule = new Schedule();
+        try (Scanner sc = new Scanner(file)) {
+            while (sc.hasNextLine()) {
+                TimeSlot slot = parseSlot(sc.nextLine());
+                if (slot != null) schedule.addSlot(slot);
             }
-        } else {
-            if (Appointment.selectedLow > 0) {
-                schedule = buildSchedule(Appointment.selectedLow, Appointment.selectedHigh);
-            }
+        } catch (Exception e) {
+            System.out.println("Load error: " + e.getMessage());
         }
         return schedule;
     }
 
-  
+    private TimeSlot parseSlot(String line) {
+        String[] parts = line.split(",");
+        if (parts.length < 6) return null;
+
+        LocalDateTime start = LocalDateTime.parse(parts[0]);
+        LocalDateTime end = LocalDateTime.parse(parts[1]);
+        boolean booked = Boolean.parseBoolean(parts[2]);
+        String bookedBy = parts[3];
+        AppointmentType type = parts[4].isEmpty() ? null : AppointmentType.valueOf(parts[4]);
+        int participants = Integer.parseInt(parts[5]);
+
+        TimeSlot slot = new TimeSlot(start, end);
+        if (booked) slot.book(bookedBy, type, participants);
+        return slot;
+    }
+
     public void viewAvailableSlots(Schedule schedule) {
         System.out.println("\nAvailable Slots:");
         int i = 0;
@@ -104,9 +113,10 @@ public class AppointmentSlotsManager {
                     " Participants: " + slot.getParticipants());
         }
     }
- // إرسال التذكيرات للمواعيد المحجوزة لليوم التالي
+
+    // إرسال التذكيرات للمواعيد المحجوزة لليوم التالي
     public void sendReminders() {
-        Schedule schedule = loadSchedule(); // حمّل الجدول من الملف
+        Schedule schedule = loadSchedule();
         LocalDateTime now = LocalDateTime.now();
 
         for (TimeSlot slot : schedule.getSlots()) {
@@ -118,10 +128,9 @@ public class AppointmentSlotsManager {
                         "Appointment Reminder",
                         "You have an appointment tomorrow at " + slot.getStart()
                     );
-                    EmailService.run(msg); // ← يرسل الرسالة باستخدام الكيان من الدومين
+                    EmailService.run(msg);
                 }
             }
         }
     }
-
 }
