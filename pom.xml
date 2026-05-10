@@ -13,7 +13,11 @@
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
         <junit.version>5.9.2</junit.version>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        
+             <sonar.organization>zakea1</sonar.organization>
+             <sonar.projectKey>zakea1_projectSoft</sonar.projectKey> 
+<sonar.host.url>https://sonarcloud.io</sonar.host.url>
+             <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencies>
